@@ -109,15 +109,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
             print('timer: %.4f sec.' % (toc - tic))
             print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data), end=' ')
 
-        if epoch%5 == 0:
-            print('here')
-            print('Saving state, iter:', iteration)
-            torch.save(model.state_dict(), 'weights/' +
-                       repr(iteration) + '.pth')
-
-        # torch.save(model.state_dict(),
-        #         args.save_folder + '' + args.dataset + '.pth')
-
+    if epoch%5 == 0:
+        print('here')
+        print('Saving state, iter:', epoch)
+        torch.save(model.state_dict(), 'weights/' +
+                   repr(epoch) + '.pth')
+        
 def validate(val_loader, model, criterion, args, transform):
 
     batch_time = AverageMeter('Time', ':6.3f')
@@ -227,8 +224,8 @@ def main():
                 transforms.ToTensor(),
                 normalize,])
 
-    train_dataset = datasets.CIFAR10(args.data, train=True, transform=train_transform, target_transform=None, download=True)
-    val_dataset = datasets.CIFAR10(args.data, train=True, transform=val_transform, target_transform=None, download=True)
+    train_dataset = datasets.ImageNet(args.data, train=True, transform=train_transform, target_transform=None, download=True)
+    val_dataset = datasets.ImageNet(args.data, train=True, transform=val_transform, target_transform=None, download=True)
 
     num_train = len(train_dataset)
     indices = list(range(num_train))
