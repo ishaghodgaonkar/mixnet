@@ -36,10 +36,13 @@ class Retina(nn.Module):
 
         """
         Ganglion cells take input from the bipolar cell layer. These are in the form of circular receptive fields, 
-        either the middle being inhibitory and surrounding excitatory, or the opposite. 
+        either the middle being inhibitory and surrounding excitatory, or the opposite. These include midget cells 
+        (large receptive field, bigger detail detection) and parvocellular cells (for fine detail and color processing).
+        Since we are only dealing with grayscale images, try to model migdet cells with larger receptive field size.
+        
         """
 
-        self.ganglion_conv = nn.Conv2d(16, 32, kernel_size=3, stride=1)
+        self.ganglion_conv = nn.Conv2d(16, 32, kernel_size=5, stride=1)
 
         """
         Similar receptive fields as ganglion cells (circular, activated in the center or in periphery). 
