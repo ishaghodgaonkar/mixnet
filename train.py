@@ -15,6 +15,8 @@ import torch.utils.data as data
 import torchvision.datasets as datasets
 import numpy as np
 from torchsummary import summary
+import matplotlib.pyplot as plt
+from sklearn import metrics
 
 from mixnet import *
 
@@ -32,7 +34,7 @@ parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
 parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
-parser.add_argument('--batch_size', default=64, type=int,
+parser.add_argument('--batch_size', default=1, type=int,
                     help='mini-batch size')
 parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
                     help='initial learning rate')
@@ -74,7 +76,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
 
     batch_iterator = iter(train_loader)
     for iteration in range(0, max_iter):
-
         images, targets = next(batch_iterator)
         if args.cuda:
             images = Variable(images.cuda())
@@ -97,7 +98,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
 
         # calculate loss
         loss = criterion(out, targets)
-        print(loss)
 
         # update weights
         loss.backward()
@@ -127,6 +127,9 @@ def validate(val_loader, model, criterion, args, transform):
 
     with torch.no_grad():
         end = time.time()
+        all_outputs = []
+        all_targets = []
+
         for i, (images, target) in enumerate(val_loader):
             if args.gpu is not None:
                 images = images.cuda(args.gpu, non_blocking=True)
@@ -145,6 +148,14 @@ def validate(val_loader, model, criterion, args, transform):
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
+
+
+            all_outputs.append(output)
+            all_targets.append(target)
+
+    conf_matrix = metrics.confusion_matrix(all_targets, all_outputs)
+
+    print(conf_matrix)
 
     return top1.avg
 
@@ -171,6 +182,7 @@ class AverageMeter(object):
         fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
         return fmtstr.format(**self.__dict__)
 
+
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
@@ -191,8 +203,13 @@ def accuracy(output, target, topk=(1,)):
 def main():
 
     model = mixnetV1()
-    print(summary(model, (3, 224, 224)))
+    # print(summary(model, (1, 224, 224)))
 
+    # Visualize kernels
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            print(m)
+            print(m.weight.data.shape)
 
     if args.cuda:
         model = torch.nn.DataParallel(model)
@@ -205,43 +222,38 @@ def main():
     if args.cuda:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum,
-                          weight_decay=args.weight_decay)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     loss_function = nn.CrossEntropyLoss()
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.456],
+                                     std=[0.224])
 
     train_transform = transforms.Compose([
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
+                transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
                 normalize,])
 
     val_transform = transforms.Compose([
                 transforms.CenterCrop(224),
+                transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
                 normalize,])
 
-    train_dataset = datasets.ImageNet(args.data, train=True, transform=train_transform, target_transform=None, download=True)
-    val_dataset = datasets.ImageNet(args.data, train=True, transform=val_transform, target_transform=None, download=True)
+    train_dataset = datasets.CIFAR100(args.data, train=True, transform=train_transform, target_transform=None, download=True)
+    val_dataset = datasets.CIFAR100(args.data, train=False, transform=val_transform, target_transform=None, download=True)
 
-    num_train = len(train_dataset)
-    indices = list(range(num_train))
-    split = int(np.floor(0.1 * num_train))
-
-    train_idx, valid_idx = indices[split:], indices[:split]
-    train_sampler = data.sampler.SubsetRandomSampler(train_idx)
-    valid_sampler = data.sampler.SubsetRandomSampler(valid_idx)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+        num_workers=args.workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True, sampler=valid_sampler)
+        num_workers=args.workers, pin_memory=True)
+
 
     max_iter = len(train_dataset) // args.batch_size
     for epoch in range(0, args.epochs):

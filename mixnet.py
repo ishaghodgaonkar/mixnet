@@ -1,14 +1,14 @@
 from torch import nn
-from torch import cat
 from collections import OrderedDict
+import torch
 
 class mixBlock(nn.Module):
-    """For layers v1 through IT"""
+    """For layers V1 through IT"""
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = kernel_size, stride=stride) # padding?
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = kernel_size, stride=stride)
         self.nonlin = nn.ReLU(inplace=True)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=1, padding=1)
 
     def forward(self, input):
         x = self.conv(input)
@@ -18,48 +18,42 @@ class mixBlock(nn.Module):
         return x
 
 
-class Retina_LGN(nn.Module):
-    """Retina and LGN layers in one block because of special structure"""
+class Retina(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
 
-        self.midget_conv1 = nn.Conv2d(in_channels, out_channels=64, kernel_size=3, stride=1)
-        self.midget_pool = nn.AdaptiveMaxPool2d(output_size=103, return_indices=False)
+        """
+        Horizontal cells activate the bipolar cell layer using lateral inhibition. This effectively increases 
+        contrast at edges. To model this, the kernel learned in the bipolar convolutional layer should be some type of 
+        edge detection or sharpen kernel. 
+        """
+        weights = torch.tensor([[-1., -1., -1.],
+                                [-1., 8., -1.],
+                                [-1., -1., -1.]])
+        weights = weights.view(1, 1, 3, 3).repeat(16, 1, 1, 1)
+        self.bipolar_conv = nn.Conv2d(in_channels, 16, kernel_size =3, stride=1, bias=False)
+        self.bipolar_conv.weight = nn.Parameter(weights)
 
-        self.parasol_conv = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2)
+        """
+        Ganglion cells take input from the bipolar cell layer. These are in the form of circular receptive fields, 
+        either the middle being inhibitory and surrounding excitatory, or the opposite. 
+        """
 
-        self.magno_conv1 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5, stride=1)
-        self.magno_conv2 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1)
+        self.ganglion_conv = nn.Conv2d(16, 32, kernel_size=3, stride=1)
 
-        self.parvo_conv1 = nn.Conv2d(in_channels=320, out_channels=512, kernel_size=3, stride=1)
-        self.parvo_conv2 = nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1)
-        self.parvo_dimred1 = nn.Conv2d(in_channels=1024, out_channels=256, kernel_size=1, stride=1)
-        self.parvo_conv3 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1)
-        self.parvo_dimred2 = nn.Conv2d(in_channels=512, out_channels=256, kernel_size=1, stride=1)
-        self.parvo_conv4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1)
-        self.parvo_dimred3 = nn.Conv2d(in_channels=512, out_channels=128, kernel_size=1, stride=1)
+        """
+        Similar receptive fields as ganglion cells (circular, activated in the center or in periphery). 
+        """
+
+        self.LGN_conv = nn.Conv2d(32, out_channels, kernel_size=3, stride=1)
 
     def forward(self, input):
 
-        midget_features = self.midget_conv1(input)
+        x = self.bipolar_conv(input)
+        x = self.ganglion_conv(x)
+        x = self.LGN_conv(x)
 
-        midget_features = self.midget_pool(midget_features)
-
-        parasol_features = self.parasol_conv(input)
-
-        magno_features1 = self.magno_conv1(parasol_features)
-        magno_features2 = self.magno_conv2(magno_features1)
-
-        parvo_features1 = self.parvo_conv1(cat([magno_features2, midget_features], dim=1))
-        parvo_features2 = self.parvo_conv2(parvo_features1)
-        parvo_features2 = self.parvo_dimred1(parvo_features2)
-        parvo_features3 = self.parvo_conv3(parvo_features2)
-        parvo_features3 = self.parvo_dimred2(parvo_features3)
-        parvo_features4 = self.parvo_conv4(parvo_features3)
-        parvo_features4 = self.parvo_dimred3(parvo_features4)
-
-        return parvo_features4
-
+        return x
 
 class Flatten(nn.Module):
 
@@ -70,11 +64,11 @@ class Flatten(nn.Module):
 def mixnetV1():
     model = nn.Sequential(
         OrderedDict([
-            ('RetinaLGN', Retina_LGN(3, 128)),
-            ('V1', mixBlock(128, 196)),
-            ('V2', mixBlock(196, 256)),
-            ('V3', mixBlock(256, 324)),
-            ('V4', mixBlock(324, 512)),
+            ('Retina', Retina(1, 64)),
+            ('V1', mixBlock(64, 96)),
+            ('V2', mixBlock(96, 128)),
+            ('V3', mixBlock(128, 256)),
+            ('V4', mixBlock(256, 512)),
             ('IT', mixBlock(512, 1024)),
             ('decoder', nn.Sequential(OrderedDict([
                 ('avgpool', nn.AdaptiveAvgPool2d(1)),
