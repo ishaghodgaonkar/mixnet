@@ -92,7 +92,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
         # forward prop
         out = model(images)
         print("forward prop done")
-
+        # print(images.shape)
+        # print(targets)
+        # print(targets.shape, out.shape)
+        # print(targets[0], out[0])
         # backprop
         optimizer.zero_grad()
 
@@ -138,7 +141,7 @@ def validate(val_loader, model, criterion, args, transform):
             # compute output
             output = model(images)
             loss = criterion(output, target)
-
+            print(output, target)
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), images.size(0))
@@ -203,6 +206,7 @@ def accuracy(output, target, topk=(1,)):
 def main():
 
     model = mixnetV1()
+    print('here')
     print(summary(model, (1, 224, 224)))
 
     # Visualize kernels

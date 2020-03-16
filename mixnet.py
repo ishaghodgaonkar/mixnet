@@ -4,17 +4,18 @@ import torch
 
 class mixBlock(nn.Module):
     """For layers V1 through IT"""
-    def __init__(self, in_channels, kernel_size=3, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, in_channels, kernel_size = kernel_size, stride=stride, padding=1)
         self.nonlin = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
-
+        self.dimred = nn.Conv2d(in_channels*2, out_channels, kernel_size=1, stride=1, padding=0)
     def forward(self, input):
         x = self.conv(input)
         x = self.nonlin(x)
         x = self.pool(x)
         x = torch.cat((x, input), 1)
+        x = self.dimred(x)
         return x
 
 
@@ -68,15 +69,16 @@ def mixnetV1():
     model = nn.Sequential(
         OrderedDict([
             ('Retina', Retina(1, 32)),
-            ('V1', mixBlock(32, 64)),
-            ('V2', mixBlock(64, 128)),
-            ('V3', mixBlock(128, 256)),
-            ('V4', mixBlock(256, 512)),
-            ('IT', mixBlock(512, 1024)),
+            ('V1', mixBlock(32, 48)),
+            ('V2', mixBlock(48, 64)),
+            ('V3', mixBlock(64, 96)),
+            ('V4', mixBlock(96, 128)),
+            ('IT', mixBlock(128, 192)),
             ('decoder', nn.Sequential(OrderedDict([
                 ('avgpool', nn.AdaptiveAvgPool2d(1)),
                 ('flatten', Flatten()),
-                ('linear', nn.Linear(1024, 1000))
+                ('linear1', nn.Linear(192, 4096)),
+                ('linear2', nn.Linear(4096, 1000))
             ])))
         ]))
     return model
