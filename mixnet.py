@@ -4,17 +4,17 @@ import torch
 
 class mixBlock(nn.Module):
     """For layers V1 through IT"""
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1):
+    def __init__(self, in_channels, kernel_size=3, stride=1):
         super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = kernel_size, stride=stride)
+        self.conv = nn.Conv2d(in_channels, in_channels, kernel_size = kernel_size, stride=stride, padding=1)
         self.nonlin = nn.ReLU(inplace=True)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=1, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
 
     def forward(self, input):
         x = self.conv(input)
         x = self.nonlin(x)
         x = self.pool(x)
-
+        x = torch.cat((x, input), 1)
         return x
 
 
@@ -42,13 +42,13 @@ class Retina(nn.Module):
         
         """
 
-        self.ganglion_conv = nn.Conv2d(16, 32, kernel_size=5, stride=1)
+        self.ganglion_conv = nn.Conv2d(16, 24, kernel_size=5, stride=1)
 
         """
         Similar receptive fields as ganglion cells (circular, activated in the center or in periphery). 
         """
 
-        self.LGN_conv = nn.Conv2d(32, out_channels, kernel_size=3, stride=1)
+        self.LGN_conv = nn.Conv2d(24, out_channels, kernel_size=3, stride=1)
 
     def forward(self, input):
 
@@ -67,9 +67,9 @@ class Flatten(nn.Module):
 def mixnetV1():
     model = nn.Sequential(
         OrderedDict([
-            ('Retina', Retina(1, 64)),
-            ('V1', mixBlock(64, 96)),
-            ('V2', mixBlock(96, 128)),
+            ('Retina', Retina(1, 32)),
+            ('V1', mixBlock(32, 64)),
+            ('V2', mixBlock(64, 128)),
             ('V3', mixBlock(128, 256)),
             ('V4', mixBlock(256, 512)),
             ('IT', mixBlock(512, 1024)),

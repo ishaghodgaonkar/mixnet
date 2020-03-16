@@ -203,7 +203,7 @@ def accuracy(output, target, topk=(1,)):
 def main():
 
     model = mixnetV1()
-    # print(summary(model, (1, 224, 224)))
+    print(summary(model, (1, 224, 224)))
 
     # Visualize kernels
     for m in model.modules():
