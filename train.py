@@ -34,7 +34,7 @@ parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
 parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
-parser.add_argument('--batch_size', default=1, type=int,
+parser.add_argument('--batch_size', default=8, type=int,
                     help='mini-batch size')
 parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
                     help='initial learning rate')
@@ -91,12 +91,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
 
         # forward prop
         out = model(images)
-        print("forward prop done")
-        # print(images.shape)
-        # print(targets)
-        # print(targets.shape, out.shape)
-        # print(targets[0], out[0])
-        # backprop
+
+        print(targets.shape, out.shape)
+
         optimizer.zero_grad()
 
         # calculate loss
@@ -108,9 +105,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
 
         toc = time.time()
 
-        if iteration % 1 == 0:
-            print('timer: %.4f sec.' % (toc - tic))
-            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data), end=' ')
+        print('timer: %.4f sec.' % (toc - tic))
+        print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data), end=' ')
 
     if epoch%5 == 0:
         print('here')
@@ -120,16 +116,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
         
 def validate(val_loader, model, criterion, args, transform):
 
-    batch_time = AverageMeter('Time', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
-
+    
     # switch to evaluate mode
     model.eval()
 
     with torch.no_grad():
-        end = time.time()
         all_outputs = []
         all_targets = []
 
@@ -143,14 +134,7 @@ def validate(val_loader, model, criterion, args, transform):
             loss = criterion(output, target)
             print(output, target)
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
-            losses.update(loss.item(), images.size(0))
-            top1.update(acc1[0], images.size(0))
-            top5.update(acc5[0], images.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+            acc1 = accuracy(output, target)
 
 
             all_outputs.append(output)
@@ -158,55 +142,22 @@ def validate(val_loader, model, criterion, args, transform):
 
     conf_matrix = metrics.confusion_matrix(all_targets, all_outputs)
 
-    print(conf_matrix)
+    #print(conf_matrix)
 
-    return top1.avg
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f'):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
-        return fmtstr.format(**self.__dict__)
+    return top1
 
 
-def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
+def accuracy(output, target):
+    print(output)
+    print(target)
+    exit()
 
-        _, pred = output.topk(maxk, 1, True, True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
-
+ 
 
 def main():
 
+    print('constructing model')
     model = mixnetV1()
-    print('here')
     print(summary(model, (1, 224, 224)))
 
     # Visualize kernels
@@ -226,7 +177,7 @@ def main():
     if args.cuda:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     loss_function = nn.CrossEntropyLoss()
 
