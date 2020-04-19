@@ -22,13 +22,13 @@ from mixnet import *
 
 
 parser = argparse.ArgumentParser(description='Training')
-parser.add_argument('--data', default='data/cifar10', required=False,
+parser.add_argument('--data', default='/local/a/cam2/data/ILSVRC2012_Classification/', required=False,
                     help='path to ImageNet folder')
 parser.add_argument('--dataset', default='cifar10', required=False,
                     help='which dataset to train on')
 parser.add_argument('--ngpus', default=0, type=int,
                     help='number of GPUs to use')
-parser.add_argument('--cuda', default=False, type=bool,
+parser.add_argument('--cuda', default=True, type=bool,
                     help='Use CUDA to train model')
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
@@ -246,8 +246,8 @@ def main():
                 transforms.ToTensor(),
                 normalize,])
 
-    train_dataset = datasets.CIFAR100(args.data, train=True, transform=train_transform, target_transform=None, download=True)
-    val_dataset = datasets.CIFAR100(args.data, train=False, transform=val_transform, target_transform=None, download=True)
+    train_dataset = datasets.ImageNet(args.data, train=True, transform=train_transform, target_transform=None, download=False)
+    val_dataset = datasets.ImageNet(args.data, train=False, transform=val_transform, target_transform=None, download=False)
 
 
     train_loader = torch.utils.data.DataLoader(
