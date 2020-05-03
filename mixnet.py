@@ -32,7 +32,7 @@ class Retina(nn.Module):
   #                              [-1., 8., -1.],
  #                               [-1., -1., -1.]])
    #    weights = weights.view(1, 1, 3, 3).repeat(16, 1, 1, 1)
-         self.bipolar_conv = nn.Conv2d(in_channels, 16, kernel_size =7, stride=1, bias=False)
+        self.bipolar_conv = nn.Conv2d(in_channels, 16, kernel_size =7, stride=1, bias=False)
   #      self.bipolar_conv.weight = nn.Parameter(weights)
 
         """
@@ -49,7 +49,7 @@ class Retina(nn.Module):
         Similar receptive fields as ganglion cells (circular, activated in the center or in periphery). 
         """
 
-        self.LGN_conv = nn.Conv2d(24, out_channels, kernel_size=3, stride=1)
+        self.LGN_conv = nn.Conv2d(32, out_channels, kernel_size=3, stride=1)
 
     def forward(self, input):
 

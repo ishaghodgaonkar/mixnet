@@ -34,7 +34,7 @@ parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
 parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
-parser.add_argument('--batch_size', default=1, type=int,
+parser.add_argument('--batch_size', default=8, type=int,
                     help='mini-batch size')
 parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
                     help='initial learning rate')
@@ -45,6 +45,8 @@ parser.add_argument('--save_folder', default='weights/',
                     help='Directory for saving checkpoint models')
 parser.add_argument('--resume', default='', type=str,
                     help='Checkpoint state_dict file to resume training from')
+parser.add_argument('--gpu', default=None, type=str)
+
 args = parser.parse_args()
 
 
@@ -77,6 +79,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
     batch_iterator = iter(train_loader)
     for iteration in range(0, max_iter):
         images, targets = next(batch_iterator)
+        print(images.shape, targets)
         if args.cuda:
             images = Variable(images.cuda())
             # targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
@@ -108,9 +111,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
 
         toc = time.time()
 
+        record = open('record.txt', 'a')
+
         if iteration % 1 == 0:
             print('timer: %.4f sec.' % (toc - tic))
             print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data), end=' ')
+            str_to_write = 'iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data) + '\n'
+            record.write(str_to_write)
+
+        record.close()
 
     if epoch%5 == 0:
         print('here')
@@ -118,7 +127,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
         torch.save(model.state_dict(), 'weights/' +
                    repr(epoch) + '.pth')
         
-def validate(val_loader, model, criterion, args, transform):
+def validate(val_loader, model, criterion, args):
 
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -141,7 +150,6 @@ def validate(val_loader, model, criterion, args, transform):
             # compute output
             output = model(images)
             loss = criterion(output, target)
-            print(output, target)
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), images.size(0))
@@ -152,10 +160,17 @@ def validate(val_loader, model, criterion, args, transform):
             batch_time.update(time.time() - end)
             end = time.time()
 
-
-            all_outputs.append(output)
-            all_targets.append(target)
-
+            output_list = []
+        #    for each in output:
+         #       output_list.append(list(each))
+            output_list = [list(x) for x in output]  
+            output_list = [x.index(max(x)) for x in output_list]
+            target = list(target)
+            target = [int(x) for x in target]
+            
+            all_outputs.extend(output_list)
+            all_targets.extend(target)
+    
     conf_matrix = metrics.confusion_matrix(all_targets, all_outputs)
 
     print(conf_matrix)
@@ -246,20 +261,26 @@ def main():
                 transforms.ToTensor(),
                 normalize,])
 
-    train_dataset = datasets.ImageNet(args.data, train=True, transform=train_transform, target_transform=None, download=False)
-    val_dataset = datasets.ImageNet(args.data, train=False, transform=val_transform, target_transform=None, download=False)
-
+    dataset = datasets.ImageFolder('/local/a/cam2/data/ILSVRC2012_Classification/train/', transform=train_transform)
+    len_dataset = len(dataset)
+    len_train = int(0.8*len(dataset))
+    len_val = len_dataset - len_train
+    print(len_train)
+    print(len_val)
+    train_set, val_set = torch.utils.data.random_split(dataset, [len_train, len_val])
+    print(train_set)
+    print(val_set)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        train_set, batch_size=args.batch_size, shuffle=True,
+        )
 
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        val_set, batch_size=args.batch_size, shuffle=True,
+       )
 
 
-    max_iter = len(train_dataset) // args.batch_size
+    max_iter = len(train_set) // args.batch_size
     for epoch in range(0, args.epochs):
         adjust_learning_rate(optimizer, epoch)
         train(train_loader, model, loss_function, optimizer, epoch, args, max_iter)
