@@ -36,7 +36,7 @@ parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
 parser.add_argument('--batch_size', default=8, type=int,
                     help='mini-batch size')
-parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
+parser.add_argument('--lr', '--learning_rate', default=.0001, type=float,
                     help='initial learning rate')
 parser.add_argument('--momentum', default=.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=1e-4, type=float,
@@ -241,7 +241,7 @@ def main():
     if args.cuda:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
 
     loss_function = nn.CrossEntropyLoss()
 
@@ -260,8 +260,9 @@ def main():
                 transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
                 normalize,])
-
     dataset = datasets.ImageFolder('/local/a/cam2/data/ILSVRC2012_Classification/train/', transform=train_transform)
+
+    #dataset = datasets.ImageFolder(args.data, transform = train_transform)
     len_dataset = len(dataset)
     len_train = int(0.8*len(dataset))
     len_val = len_dataset - len_train
@@ -274,7 +275,6 @@ def main():
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size, shuffle=True,
         )
-
     val_loader = torch.utils.data.DataLoader(
         val_set, batch_size=args.batch_size, shuffle=True,
        )

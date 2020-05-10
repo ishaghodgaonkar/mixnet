@@ -11,9 +11,9 @@ class mixBlock(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=3, stride=1, padding=1)
         #self.dimred = nn.Conv2d(in_channels*2, out_channels, kernel_size=1, stride=1, padding=0)
     def forward(self, input):
-        x = self.conv(input)
-        x = self.nonlin(x)
-        x = self.pool(x)
+        x_conv = self.conv(input)
+        x_nonlin = self.nonlin(x_conv)
+        x = self.pool(x_nonlin)
         x = torch.cat((x, input), 1)
         #x = self.dimred(x)
         return x
@@ -28,12 +28,12 @@ class Retina(nn.Module):
         contrast at edges. To model this, the kernel learned in the bipolar convolutional layer should be some type of 
         edge detection or sharpen kernel. 
         """
-#        weights = torch.tensor([[-1., -1., -1.],
-  #                              [-1., 8., -1.],
- #                               [-1., -1., -1.]])
-   #    weights = weights.view(1, 1, 3, 3).repeat(16, 1, 1, 1)
+        weights = torch.tensor([[-1., -1., -1.],
+                                [-1., 8., -1.],
+                               [-1., -1., -1.]])
+        weights = weights.view(1, 1, 3, 3).repeat(16, 1, 1, 1)
         self.bipolar_conv = nn.Conv2d(in_channels, 16, kernel_size =7, stride=1, bias=False)
-  #      self.bipolar_conv.weight = nn.Parameter(weights)
+        self.bipolar_conv.weight = nn.Parameter(weights, requires_grad=True)
 
         """
         Ganglion cells take input from the bipolar cell layer. These are in the form of circular receptive fields, 
