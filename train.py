@@ -17,7 +17,6 @@ import numpy as np
 from torchsummary import summary
 import matplotlib.pyplot as plt
 from sklearn import metrics
-
 from mixnet import *
 
 
@@ -222,7 +221,7 @@ def main():
 
     model = mixnetV1()
     print('here')
-    print(summary(model, (1, 224, 224)))
+    print(summary(model, (3, 224, 224)))
 
     # Visualize kernels
     for m in model.modules():
@@ -251,13 +250,13 @@ def main():
     train_transform = transforms.Compose([
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
-                transforms.Grayscale(num_output_channels=1),
+                # transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
                 normalize,])
 
     val_transform = transforms.Compose([
                 transforms.CenterCrop(224),
-                transforms.Grayscale(num_output_channels=1),
+                # transforms.Grayscale(num_output_channels=1),
                 transforms.ToTensor(),
                 normalize,])
     dataset = datasets.ImageFolder('/local/a/cam2/data/ILSVRC2012_Classification/train/', transform=train_transform)
