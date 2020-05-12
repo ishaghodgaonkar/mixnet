@@ -27,7 +27,7 @@ parser.add_argument('--dataset', default='cifar10', required=False,
                     help='which dataset to train on')
 parser.add_argument('--ngpus', default=0, type=int,
                     help='number of GPUs to use')
-parser.add_argument('--cuda', default=False, type=bool,
+parser.add_argument('--cuda', default=True, type=bool,
                     help='Use CUDA to train model')
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
@@ -35,7 +35,7 @@ parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
 parser.add_argument('--batch_size', default=8, type=int,
                     help='mini-batch size')
-parser.add_argument('--lr', '--learning_rate', default=.0001, type=float,
+parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
                     help='initial learning rate')
 parser.add_argument('--momentum', default=.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=1e-4, type=float,
@@ -69,7 +69,7 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
+def train(train_loader, val_loader, model, criterion, optimizer, epoch, args, max_iter):
     """Trains model on ImageNet"""
 
     # set model to training mode
@@ -101,7 +101,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
         # backprop
         optimizer.zero_grad()
 
-        # calculate loss
+        # calculate loss=
         loss = criterion(out, targets)
 
         # update weights
@@ -119,6 +119,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args, max_iter):
             record.write(str_to_write)
 
         record.close()
+        
+        val_acc = validate(val_loader, model, criterion, args)
+        print('val_acc', val_acc)
 
     if epoch%5 == 0:
         print('here')
@@ -149,6 +152,7 @@ def validate(val_loader, model, criterion, args):
             # compute output
             output = model(images)
             loss = criterion(output, target)
+            print('val loss', loss)
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), images.size(0))
@@ -240,7 +244,7 @@ def main():
     if args.cuda:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), args.lr, momentum=0.9)
 
     loss_function = nn.CrossEntropyLoss()
 
@@ -282,7 +286,7 @@ def main():
     max_iter = len(train_set) // args.batch_size
     for epoch in range(0, args.epochs):
         adjust_learning_rate(optimizer, epoch)
-        train(train_loader, model, loss_function, optimizer, epoch, args, max_iter)
+        train(train_loader, val_loader, model, loss_function, optimizer, epoch, args, max_iter)
         acc1 = validate(val_loader, model, loss_function, args)
         print(acc1)
 

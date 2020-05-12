@@ -75,10 +75,12 @@ class Retina(nn.Module):
             PIL_image = trans(input[0])
             focal_input = PIL_image.crop((37, 37, 187, 187))
             focal_input = tensor_trans(focal_input).unsqueeze(0)
+            focal_input = focal_input.cuda()
             final_focal_input_tensor = torch.cat((final_focal_input_tensor, focal_input), 0)
 
             grayscaled_input = grayscale_trans(PIL_image)
             grayscaled_input = tensor_trans(grayscaled_input).unsqueeze(0)
+            grayscaled_input = grayscaled_input.cuda()
             final_whole_input_tensor = torch.cat((final_whole_input_tensor, grayscaled_input), 0)
 
         # plt.imshow((input[0].permute(1, 2, 0)))
