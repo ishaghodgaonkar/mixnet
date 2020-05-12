@@ -71,6 +71,7 @@ class Retina(nn.Module):
 
 
         for i in range(input.shape[0]):
+            input = input.cpu()
             PIL_image = trans(input[0])
             focal_input = PIL_image.crop((37, 37, 187, 187))
             focal_input = tensor_trans(focal_input).unsqueeze(0)

@@ -27,7 +27,7 @@ parser.add_argument('--dataset', default='cifar10', required=False,
                     help='which dataset to train on')
 parser.add_argument('--ngpus', default=0, type=int,
                     help='number of GPUs to use')
-parser.add_argument('--cuda', default=True, type=bool,
+parser.add_argument('--cuda', default=False, type=bool,
                     help='Use CUDA to train model')
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers')
@@ -142,8 +142,8 @@ def validate(val_loader, model, criterion, args):
         all_targets = []
 
         for i, (images, target) in enumerate(val_loader):
-            if args.gpu is not None:
-                images = images.cuda(args.gpu, non_blocking=True)
+            # if args.gpu is not None:
+            #     images = images.cuda(args.gpu, non_blocking=True)
             target = target.cuda(args.gpu, non_blocking=True)
 
             # compute output
