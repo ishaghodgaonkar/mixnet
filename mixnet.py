@@ -11,14 +11,14 @@ class mixBlock(nn.Module):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, in_channels, kernel_size = kernel_size, stride=stride, padding=1)
         self.nonlin = nn.ReLU(inplace=True)
-        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        #self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         #self.dimred = nn.Conv2d(in_channels*2, out_channels, kernel_size=1, stride=1, padding=0)
     def forward(self, input):
         x_conv = self.conv(input)
         x_nonlin = self.nonlin(x_conv)
-        x = self.pool(x_nonlin)
-        input_pooled = self.pool(input)
-        x = torch.cat((x, input_pooled), 1)
+        #x = self.pool(x_nonlin)
+        #input_pooled = self.pool(input)
+        x = torch.cat((x_nonlin, input), 1)
         #x = self.dimred(x)
         return x
 
@@ -37,8 +37,8 @@ class Retina(nn.Module):
         rods outnumber cones in the retina, but cones are more concentrated in the fovea. cones are wider than rods.
         """
         #weights = weights.view(1, 1, 3, 3).repeat(16, 1, 1, 1)
-        self.rods = nn.Conv2d(1, 16, kernel_size=3, stride=1, bias=False)
-        self.cones = nn.Conv2d(in_channels, 16, kernel_size=7, stride=1, bias=False)
+        self.rods = nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=1)
+        self.cones = nn.Conv2d(in_channels, 16, kernel_size=3, stride=1)
         #self.bipolar_conv.weight = nn.Parameter(weights, requires_grad=True)
 
         """
@@ -51,7 +51,7 @@ class Retina(nn.Module):
         """
         bipolar cells consolidate information from rods and cones before passing to ganglion cells
         """
-        self.bipolar = nn.Conv2d(32, out_channels, kernel_size=5, stride=2)
+        self.bipolar = nn.Conv2d(32, out_channels, kernel_size=3, stride=1)
         # self.ganglion = nn.Conv2d(32, 64, kernel_size=3, stride=2)
 
         """
@@ -93,8 +93,8 @@ class Retina(nn.Module):
 
         # apply cones on center of image
         x_cones = self.cones(final_focal_input_tensor)
-        print(x_rods.shape)
-        print(x_cones.shape)
+        # print(x_rods.shape)
+        # print(x_cones.shape)
 
         # upsample cones feature map
         upsample = torch.nn.Upsample(size=222)
@@ -117,7 +117,7 @@ class Flatten(nn.Module):
 def mixnetV1():
     model = nn.Sequential(
         OrderedDict([
-           ('Retina', Retina(3, 64)),
+            ('Retina', Retina(3, 64)),
             ('V1', mixBlock(64, 128)),
             ('V2', mixBlock(128, 256)),
             ('V4', mixBlock(256, 512)),

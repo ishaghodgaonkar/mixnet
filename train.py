@@ -18,7 +18,7 @@ from torchsummary import summary
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from mixnet import *
-
+import torchvision.models as models
 
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--data', default='/local/a/cam2/data/ILSVRC2012_Classification/', required=False,
@@ -35,7 +35,7 @@ parser.add_argument('--epochs', default=20, type=int,
                     help='number of total epochs to run')
 parser.add_argument('--batch_size', default=8, type=int,
                     help='mini-batch size')
-parser.add_argument('--lr', '--learning_rate', default=.01, type=float,
+parser.add_argument('--lr', '--learning_rate', default=.001, type=float,
                     help='initial learning rate')
 parser.add_argument('--momentum', default=.9, type=float, help='momentum')
 parser.add_argument('--weight_decay', default=1e-4, type=float,
@@ -110,7 +110,7 @@ def train(train_loader, val_loader, model, criterion, optimizer, epoch, args, ma
 
         toc = time.time()
 
-        record = open('record.txt', 'a')
+        record = open('record_6_7_mixnet_switched_rods_cones_no_pooling.txt', 'a')
 
         if iteration % 1 == 0:
             print('timer: %.4f sec.' % (toc - tic))
@@ -118,16 +118,17 @@ def train(train_loader, val_loader, model, criterion, optimizer, epoch, args, ma
             str_to_write = 'iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data) + '\n'
             record.write(str_to_write)
 
-        record.close()
-        
-        val_acc = validate(val_loader, model, criterion, args)
-        print('val_acc', val_acc)
+        if iteration % 100 == 0:
+            val_acc, loss_avg = validate(val_loader, model, criterion, args)
+            print('val_acc', val_acc)
+            record.write(' epoch ' + repr(epoch) + ' iter ' + repr(iteration) + ' val acc ' + str(val_acc) + 'loss avg ' + repr(loss_avg) + '\n')
 
-    if epoch%5 == 0:
+        record.close()
+    if epoch%1 == 0:
         print('here')
         print('Saving state, iter:', epoch)
         torch.save(model.state_dict(), 'weights/' +
-                   repr(epoch) + '.pth')
+                   repr(epoch) + 'without_retina.pth')
         
 def validate(val_loader, model, criterion, args):
 
@@ -143,7 +144,7 @@ def validate(val_loader, model, criterion, args):
         end = time.time()
         all_outputs = []
         all_targets = []
-
+        test_count = 0
         for i, (images, target) in enumerate(val_loader):
             # if args.gpu is not None:
             #     images = images.cuda(args.gpu, non_blocking=True)
@@ -152,7 +153,7 @@ def validate(val_loader, model, criterion, args):
             # compute output
             output = model(images)
             loss = criterion(output, target)
-            print('val loss', loss)
+            #print('val loss', loss)
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), images.size(0))
@@ -173,12 +174,14 @@ def validate(val_loader, model, criterion, args):
             
             all_outputs.extend(output_list)
             all_targets.extend(target)
-    
+            test_count +=1
+            if (test_count > 5):
+                break
     conf_matrix = metrics.confusion_matrix(all_targets, all_outputs)
 
     print(conf_matrix)
-
-    return top1.avg
+    print("val loss avg", losses.avg)
+    return top1.avg, losses.avg
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -224,6 +227,7 @@ def accuracy(output, target, topk=(1,)):
 def main():
 
     model = mixnetV1()
+    #model = models.densenet161()
     print('here')
     print(summary(model, (3, 224, 224)))
 
@@ -287,7 +291,7 @@ def main():
     for epoch in range(0, args.epochs):
         adjust_learning_rate(optimizer, epoch)
         train(train_loader, val_loader, model, loss_function, optimizer, epoch, args, max_iter)
-        acc1 = validate(val_loader, model, loss_function, args)
+        acc1, loss_avg = validate(val_loader, model, loss_function, args)
         print(acc1)
 
 if __name__ == '__main__':
